@@ -10,6 +10,13 @@ CATALOG_DB_PATH = DATA_DIR / "catalog.sqlite3"
 FILESERVER_HOST = os.environ.get("SATUDATA_MCP_FILESERVER_HOST", "127.0.0.1")
 FILESERVER_PORT = int(os.environ.get("SATUDATA_MCP_FILESERVER_PORT", "8799"))
 
+# Public base URL advertised in `download_url`, for when the file server sits
+# behind a reverse proxy (TLS termination, auth) instead of being reached
+# directly. May include a path prefix, e.g. "https://example.com/files" - the
+# proxy is responsible for stripping that prefix before forwarding to the
+# handler, which serves files at root. Empty -> fall back to the bind address.
+FILESERVER_PUBLIC_URL = os.environ.get("SATUDATA_MCP_FILESERVER_PUBLIC_URL", "")
+
 # MCP transport - "stdio" (default, for Command+Args style connectors) or
 # "streamable-http" (for HTTP-based MCP connectors). Distinct from
 # FILESERVER_*, which is always its own plain HTTP file server regardless

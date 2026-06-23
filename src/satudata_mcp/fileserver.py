@@ -4,13 +4,17 @@ import functools
 import threading
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
-from .config import CACHE_DIR, FILESERVER_HOST, FILESERVER_PORT
+from .config import CACHE_DIR, FILESERVER_HOST, FILESERVER_PORT, FILESERVER_PUBLIC_URL
 
 _server: ThreadingHTTPServer | None = None
 _thread: threading.Thread | None = None
 
 
 def base_url() -> str:
+    # When set, the public URL is what clients/sandboxes actually reach (e.g. a
+    # reverse proxy doing TLS); FILESERVER_HOST/PORT are only the local bind.
+    if FILESERVER_PUBLIC_URL:
+        return FILESERVER_PUBLIC_URL.rstrip("/")
     return f"http://{FILESERVER_HOST}:{FILESERVER_PORT}"
 
 

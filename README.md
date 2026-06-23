@@ -116,16 +116,86 @@ file-cache server's own port, `SATUDATA_MCP_FILESERVER_PORT`, default
 | `SATUDATA_MCP_HOME` | `~/.cache/satudata-mcp` | Catalog DB + file cache location |
 | `SATUDATA_MCP_FILESERVER_HOST` | `127.0.0.1` | Host the file server binds to |
 | `SATUDATA_MCP_FILESERVER_PORT` | `8799` | Port the file server binds to |
+| `SATUDATA_MCP_FILESERVER_PUBLIC_URL` | *(empty)* | Public base URL advertised in `download_url`. Set when behind a reverse proxy (see [Deployment](#deployment-remote-reverse-proxy)). Empty → built from the bind host/port above |
 | `SATUDATA_MCP_CATALOG_TTL` | `86400` (24h) | Catalog refresh interval, seconds |
 | `SATUDATA_MCP_VALUE_TTL` | `86400` (24h) | Dataset-value cache TTL, seconds |
 | `SATUDATA_MCP_TRANSPORT` | `stdio` | `stdio` or `streamable-http` |
 | `SATUDATA_MCP_HTTP_HOST` | `127.0.0.1` | Bind host when transport is `streamable-http` |
 | `SATUDATA_MCP_HTTP_PORT` | `8800` | Bind port when transport is `streamable-http` |
 
-If your sandbox is *not* on the same host/network as the MCP server,
-set `SATUDATA_MCP_FILESERVER_HOST` to an interface reachable from the
-sandbox (and make sure the port is open to it) — the `download_url`
-returned by `get_dataset_data` is built from these two values.
+If your sandbox is *not* on the same host/network as the MCP server, the
+`download_url` returned by `get_dataset_data` has to point somewhere the
+sandbox can actually reach. Two ways:
+
+- **Behind a reverse proxy** (recommended): keep the bind host on
+  `127.0.0.1` and set `SATUDATA_MCP_FILESERVER_PUBLIC_URL` to the public
+  URL (see [Deployment](#deployment-remote-reverse-proxy)).
+- **Direct exposure**: set `SATUDATA_MCP_FILESERVER_HOST` to an interface
+  reachable from the sandbox and open the port. Note the file server is
+  plain HTTP with no auth and serves the entire cache dir, so only do this
+  on a trusted network.
+
+## Deployment (remote, reverse proxy)
+
+The two HTTP endpoints — the MCP server (default `127.0.0.1:8800`) and the
+file server (default `127.0.0.1:8799`) — are independent. To reach both
+over the internet, keep them bound to localhost and put a TLS-terminating
+reverse proxy in front:
+
+- **MCP endpoint** needs no code-side URL config — the proxy just forwards
+  to `127.0.0.1:8800`, and you point your connector at the public
+  `https://.../mcp`.
+- **File server** *does* need its public URL, because the code bakes it
+  into `download_url`. Set `SATUDATA_MCP_FILESERVER_PUBLIC_URL`.
+
+The file server serves files at root (`/<slug>.csv`), so it works either as
+a subdomain or under a path prefix — with a prefix, the proxy must strip it
+before forwarding.
+
+**Caddy** (subdomain for files):
+
+```caddy
+api.example.com {
+    reverse_proxy 127.0.0.1:8800   # MCP -> /mcp
+}
+files.example.com {
+    reverse_proxy 127.0.0.1:8799
+}
+```
+→ `SATUDATA_MCP_FILESERVER_PUBLIC_URL=https://files.example.com`
+
+**Caddy** (path prefix instead — `handle_path` strips `/files`):
+
+```caddy
+example.com {
+    reverse_proxy /mcp* 127.0.0.1:8800
+    handle_path /files/* {
+        reverse_proxy 127.0.0.1:8799
+    }
+}
+```
+→ `SATUDATA_MCP_FILESERVER_PUBLIC_URL=https://example.com/files`
+
+**nginx** (path prefix — the trailing `/` on `proxy_pass` is what strips
+`/files/`):
+
+```nginx
+location /mcp    { proxy_pass http://127.0.0.1:8800; }
+location /files/ { proxy_pass http://127.0.0.1:8799/; }
+```
+→ `SATUDATA_MCP_FILESERVER_PUBLIC_URL=https://example.com/files`
+
+### Process management (PM2)
+
+`ecosystem.config.cjs` runs the server under PM2 with the production env
+(streamable-http transport, cache dir, restart policy). It's set up for a
+same-host sandbox by default; uncomment `SATUDATA_MCP_FILESERVER_PUBLIC_URL`
+there once a proxy is in front.
+
+```bash
+pm2 start ecosystem.config.cjs
+pm2 logs satudata-mcp
+```
 
 ## Known upstream quirks
 
