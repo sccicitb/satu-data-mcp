@@ -8,11 +8,11 @@ from mcp.server.fastmcp import FastMCP
 
 from . import cache, catalog
 from .api_client import SatuDataClient
-from .config import INLINE_ROW_THRESHOLD
+from .config import INLINE_ROW_THRESHOLD, MCP_HTTP_HOST, MCP_HTTP_PORT, MCP_TRANSPORT
 from .fileserver import start_fileserver, file_url
 from .textutils import strip_html
 
-mcp = FastMCP("satudata-garut")
+mcp = FastMCP("satudata-garut", host=MCP_HTTP_HOST, port=MCP_HTTP_PORT)
 
 _client = SatuDataClient()
 _catalog_lock = asyncio.Lock()
@@ -177,7 +177,7 @@ async def get_dataset_data(slug: str, format: str = "csv", force_refresh: bool =
 
 
 def main() -> None:
-    mcp.run()
+    mcp.run(transport=MCP_TRANSPORT)
 
 
 if __name__ == "__main__":

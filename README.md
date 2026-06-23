@@ -80,7 +80,7 @@ python -m venv .venv
 .venv/Scripts/python.exe -m satudata_mcp
 ```
 
-Runs over stdio. Add to an MCP client config like:
+Defaults to stdio transport. Add to an MCP client config like:
 
 ```json
 {
@@ -93,6 +93,22 @@ Runs over stdio. Add to an MCP client config like:
 }
 ```
 
+### HTTP transport
+
+Set `SATUDATA_MCP_TRANSPORT=streamable-http` to serve MCP over HTTP
+instead (e.g. for a connector that expects a URL rather than a
+command+args pair):
+
+```bash
+SATUDATA_MCP_TRANSPORT=streamable-http .venv/Scripts/python.exe -m satudata_mcp
+# MCP endpoint: http://127.0.0.1:8800/mcp
+```
+
+Configure the bind address with `SATUDATA_MCP_HTTP_HOST` /
+`SATUDATA_MCP_HTTP_PORT` (defaults `127.0.0.1:8800` - distinct from the
+file-cache server's own port, `SATUDATA_MCP_FILESERVER_PORT`, default
+`8799`).
+
 ## Configuration (env vars)
 
 | Var | Default | Purpose |
@@ -102,6 +118,9 @@ Runs over stdio. Add to an MCP client config like:
 | `SATUDATA_MCP_FILESERVER_PORT` | `8799` | Port the file server binds to |
 | `SATUDATA_MCP_CATALOG_TTL` | `86400` (24h) | Catalog refresh interval, seconds |
 | `SATUDATA_MCP_VALUE_TTL` | `86400` (24h) | Dataset-value cache TTL, seconds |
+| `SATUDATA_MCP_TRANSPORT` | `stdio` | `stdio` or `streamable-http` |
+| `SATUDATA_MCP_HTTP_HOST` | `127.0.0.1` | Bind host when transport is `streamable-http` |
+| `SATUDATA_MCP_HTTP_PORT` | `8800` | Bind port when transport is `streamable-http` |
 
 If your sandbox is *not* on the same host/network as the MCP server,
 set `SATUDATA_MCP_FILESERVER_HOST` to an interface reachable from the
